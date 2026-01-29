@@ -15,6 +15,9 @@ To the original method, calculating matrix exponential with Taylor series, a met
 
 A simple example shows the usage inside C++.
 
+# For Rust Users
+
+Download the source and use "cargo run --release" to start the example.
 
 # For R Users
 

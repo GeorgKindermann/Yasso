@@ -1,26 +1,39 @@
 module yasso20
 
-export set_theta, set_A, get_spin, get_next_timestep
+export get_theta, get_A, get_spin, get_next_timestep
 
-theta = Vector{Float64}(undef, 35)
-A = Matrix{Float64}(undef, 5, 5)
+using LinearAlgebra, StaticArrays
 
-function set_theta(theta_)
-  global theta = copy(theta_)
-  tabs = [1:4; 32; 35]
-  theta[tabs] .= -abs.(theta[tabs])
-  nothing
+@inline @fastmath function exp5(A::SMatrix{5, 5, Float64, 25})
+    s = 0.0
+    @inbounds for i in 1:25; s += A[i]^2; end
+    p = sqrt(s)
+    
+    normiter = 2.0; j = 2
+    while p > normiter; normiter *= 2.0; j += 1; end
+
+    C = A / normiter
+    res = one(SMatrix{5,5,Float64,25}) + C
+    
+    D = C * C; res += D * 0.5
+    D = D * C; res += D * 0.16666666666666666
+    D = D * C; res += D * 0.041666666666666664
+    D = D * C; res += D * 0.008333333333333333
+    D = D * C; res += D * 0.001388888888888889
+    D = D * C; res += D * 0.0001984126984126984
+
+    @inbounds for _ in 2:j; res = res * res; end
+    res
 end
 
-function set_A(avgT, sumP, diam, leach)
-  global A[1:4, 5] .= 0.0
-
-  m3 = sumP / 1000.0
+@inline @fastmath function get_A(theta::SVector{35, Float64}, avgT::SVector{12, Float64}, sumP::Float64, diam::Float64, leach::Float64)
+  m3 = sumP / 1000
 
   #Average temperature dependence
-  tem = sum(exp.(theta[22] * avgT + theta[23] * avgT .^ 2)) / 12.
-  temN = sum(exp.(theta[24] * avgT + theta[25] * avgT .^ 2)) / 12.
-  temH = sum(exp.(theta[26] * avgT + theta[27] * avgT .^ 2)) / 12.
+  avgT2 = avgT .^ 2
+  tem = sum(exp.(theta[22] * avgT + theta[23] * avgT2)) / 12.
+  temN = sum(exp.(theta[24] * avgT + theta[25] * avgT2)) / 12.
+  temH = sum(exp.(theta[26] * avgT + theta[27] * avgT2)) / 12.
 
   #Precipitation dependence
   tem = tem * (1.0 - exp(theta[28] * m3))
@@ -28,44 +41,50 @@ function set_A(avgT, sumP, diam, leach)
   temH = temH * (1.0 - exp(theta[30] * m3))
 
   #Size class dependence -- no effect if d == 0.0
-  size_dep = 1
-  if (diam > 0.0)
-    size_dep = min(1.0, (1.0 + theta[33] * diam + theta[34] * diam^2)^theta[35])
-  end
+  size_dep = (diam > 0.0) ? min(1.0, (1.0 + theta[33]*diam + theta[34]*diam^2)^theta[35]) : 1.0
+
   #Calculating matrix a (will work ok despite the sign of alphas)
-  A[1:6:13] = theta[1:3] * tem * size_dep
-  A[4, 4] = theta[4] * temN * size_dep
-  A[5, 5] = theta[32] * temH #no size effect in humus
-  dAbs = abs.(A[1:6:19])
-  idx = 5
-  for i in 0:3
-    for j in 0:3
-      if (i != j)
-        A[1+j*5+i] = theta[idx] * dAbs[1+j]
+  A = MMatrix{5, 5, Float64, 25}(undef)
+  @inbounds begin
+    k = tem * size_dep
+    A[1, 1] = theta[1] * k
+    A[2, 2] = theta[2] * k
+    A[3, 3] = theta[3] * k
+    A[4, 4] = theta[4] * temN * size_dep
+    A[5, 5] = theta[32] * temH
+    
+    dAbs = abs.(@SVector [A[1], A[7], A[13], A[19]])
+    idx = 5
+    for i in 1:4, j in 1:4
+      if i != j
+        A[i, j] = theta[idx] * dAbs[j]
         idx += 1
       end
     end
+    #mass flows AWEN -> H (size effect is present here)
+    for j in 1:4; A[5, j] = theta[31] * dAbs[j]; end
+    #Leaching (no leaching for humus) 
+    if (leach < 0.0)
+      lm3 = leach * m3
+      for j in 1:4; A[j, j] += lm3; end
+    end
   end
-  #mass flows AWEN -> H (size effect is present here)
-  A[5:5:20] .= theta[31] * dAbs
-  #Leaching (no leaching for humus) 
-  if (leach < 0.0)
-    A[1:6:19] .+= leach * m3
-  end
-  nothing
+  SMatrix(A)
 end
 
-function get_spin(infall)
+@inline @fastmath function get_next_timestep(A::SMatrix{5, 5, Float64}, init::SVector{5, Float64}, infall::SVector{5, Float64}, t::Float64 = 1.)
+  #A \ (exp(A * t) * (A * init + infall) - infall)
+  A \ (exp5(A * t) * (A * init + infall) - infall)
+end
+
+function get_theta(theta = [0.51,5.19,0.13,0.1,0.5,0.,1.,1.,0.99,0.,0.,0.,0.,0.,0.163,0.,-0.,0.,0.,0.,0.,0.158,-0.002,0.17,-0.005,0.067,-0.,-1.44,-2.0,-6.9,0.0042,0.0015,-2.55,1.24,0.25])
+  @assert length(theta) == 35
+  tabs = [1:4; 32; 35]
+  theta[tabs] .= -abs.(theta[tabs])
+  SVector{35, Float64}(theta)
+end
+
+function get_spin(A::SMatrix{5, 5, Float64}, infall::SVector{5, Float64})
   A \ infall * -1
 end
-
-function get_next_timestep(init, infall, time)
-  A \ (exp(A * time) * (A * init + infall) - infall)
-end
-
-#import Expokit #Does not improve mutch
-#function get_next_timestepB(init, infall, time)
-#  A \ (Expokit.chbv(A * time, A * init + infall) - infall)
-#end
-
 end

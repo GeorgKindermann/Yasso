@@ -17,6 +17,9 @@ To the original method, calculating matrix exponential with Taylor series, a met
 
 A simple example shows the usage inside C++.
 
+# For Rust Users
+
+Download the source and use "cargo run --release" to start the example.
 
 # For R Users
 
@@ -37,9 +40,10 @@ Download [simpleExample.jl](https://raw.githubusercontent.com/GeorgKindermann/Ya
 The here provided implementations for YASSO20 can make n simulations steps per second in the different languages on an AMD Ryzen 7 PRO 5850U:
 
 1. C++: 1'821'407 iterations per Second (2'593'899 when using fast-math)
+3. Julia: 1'744'245 iterations per Second
 2. Fortran: 1'642'435 iterations per Second
-3. Julia: 75'052 iterations per Second
+3. Rust: 1'236'705 iterations per Second
 4. R: 4'462 iterations per Second
 5. Python: 4'030 iterations per Second
 
-So C++ or Fortran are about 400 times faster than R or Python.
+C++, Julia, Fortran or Rust are about 300-600 times faster than R or Python.
