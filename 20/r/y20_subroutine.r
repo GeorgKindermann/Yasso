@@ -8,6 +8,9 @@ yasso20$setTheta <- function(theta_) {
   yasso20$theta[tabs] = -abs(yasso20$theta[tabs])
 }
 
+yasso20$Vidx <- c(6, 11, 16, 2, 12, 17, 3, 8, 18, 4, 9, 14)
+yasso20$Aidx <- c(2, 3, 4, 1, 3, 4, 1, 2, 4, 1, 2, 3)
+
 yasso20$setA <- function(avgT, sumP, diam, leach) {
   yasso20$A <- matrix(0, 5, 5)
 
@@ -29,15 +32,16 @@ yasso20$setA <- function(avgT, sumP, diam, leach) {
   yasso20$A[4,4] = yasso20$theta[4]*temN*size_dep
   yasso20$A[5,5] = yasso20$theta[32]*temH #no size effect in humus
   dAbs <- abs(yasso20$A[1+(0:3*6)])
-  idx <- 5
-  for(i in 0:3) {
-    for(j in 0:3) {
-      if(i!=j) {
-        yasso20$A[1+j*5+i] = yasso20$theta[idx] * dAbs[1+j];
-        idx <- idx+1
-      }
-    }
-  }
+  #idx <- 5
+  #for(i in 0:3) {
+  #  for(j in 0:3) {
+  #    if(i!=j) {
+  #      yasso20$A[1+j*5+i] = yasso20$theta[idx] * dAbs[1+j];
+  #      idx <- idx+1
+  #    }
+  #  }
+  #}
+  yasso20$A[yasso20$Vidx] <- yasso20$theta[5:16] * dAbs[yasso20$Aidx]
 #mass flows AWEN -> H (size effect is present here)
   yasso20$A[1:4*5] = yasso20$theta[31] * dAbs
 #Leaching (no leaching for humus) 

@@ -37,16 +37,12 @@ infall2 = infall
 result = np.zeros(5)
 y20.setTheta(theta)
 for i in range(n):
-    infall2 = infall * i / n
-    avgT2 = avgT + i / n
-    y20.setA(avgT2, sumP, diam, leach)
-    result = y20.getNextTimestep(result, infall, time)
+    y20.setA(avgT + i / n, sumP, diam, leach)
+    result = y20.getNextTimestep(result, infall * i / n, time)
 
 print(timeit.default_timer() - start_time)
-#307.1552226519998  when using 5 threads
-#108.64224406100038
+# Single Core: 70.15
+# Multicore: 87.00
 
 result
-#array([1.40538097, 0.14923343, 0.22333682, 3.02026497, 6.67175339])
-
-
+# 1.40537233, 0.14923256, 0.2233362 , 3.02023804, 6.66990664]

@@ -43,7 +43,7 @@ The here provided implementations for YASSO20 can make n simulations steps per s
 1. Rust: 2'500'000 iterations per Second
 1. Fortran: 2'500'000 iterations per Second
 4. Julia: 1'700'000 iterations per Second
-5. Python: 9'200 iterations per Second
-6. R: 7'150 iterations per Second
+5. Python: 14'250 iterations per Second
+6. R: 8'800 iterations per Second
 
-C++, Fortran and Rust are about 270 times faster than Python.
+C++, Fortran and Rust are about 175 times faster than Python.
