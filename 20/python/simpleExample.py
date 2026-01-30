@@ -44,7 +44,7 @@ for i in range(n):
 
 print(timeit.default_timer() - start_time)
 #307.1552226519998  when using 5 threads
-#248.1597651720001  when using 1 thread
+#108.64224406100038
 
 result
 #array([1.40538097, 0.14923343, 0.22333682, 3.02026497, 6.67175339])

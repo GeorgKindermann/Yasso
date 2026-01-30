@@ -1,0 +1,8 @@
+[package]
+name = "yasso20"
+version = "0.1.0"
+authors = ["Georg Kindermann"]
+edition = "2018"
+
+[dependencies]
+fast-math = "0.1"

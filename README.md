@@ -19,7 +19,7 @@ A simple example shows the usage inside C++.
 
 # For Rust Users
 
-Download the source and use "cargo run --release" to start the example.
+Download the source and use >RUSTFLAGS="-C target-cpu=native" cargo run --release< to start the example.
 
 # For R Users
 
@@ -39,11 +39,11 @@ Download [simpleExample.jl](https://raw.githubusercontent.com/GeorgKindermann/Ya
 
 The here provided implementations for YASSO20 can make n simulations steps per second in the different languages on an AMD Ryzen 7 PRO 5850U:
 
-1. C++: 1'821'407 iterations per Second (2'593'899 when using fast-math)
-3. Julia: 1'744'245 iterations per Second
-2. Fortran: 1'642'435 iterations per Second
-3. Rust: 1'236'705 iterations per Second
-4. R: 4'462 iterations per Second
-5. Python: 4'030 iterations per Second
+1. C++: 2'500'000 iterations per Second
+1. Rust: 2'500'000 iterations per Second
+1. Fortran: 2'500'000 iterations per Second
+4. Julia: 1'700'000 iterations per Second
+5. Python: 9'200 iterations per Second
+6. R: 7'150 iterations per Second
 
-C++, Julia, Fortran or Rust are about 300-600 times faster than R or Python.
+C++, Fortran and Rust are about 270 times faster than Python.

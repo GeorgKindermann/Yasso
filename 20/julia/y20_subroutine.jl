@@ -4,7 +4,7 @@ export get_theta, get_A, get_spin, get_next_timestep
 
 using LinearAlgebra, StaticArrays
 
-@inline @fastmath function exp5(A::SMatrix{5, 5, Float64, 25})
+@inline @fastmath function exp5FIX(A::SMatrix{5, 5, Float64, 25})
     s = 0.0
     @inbounds for i in 1:25; s += A[i]^2; end
     p = sqrt(s)
@@ -24,6 +24,39 @@ using LinearAlgebra, StaticArrays
 
     @inbounds for _ in 2:j; res = res * res; end
     res
+end
+
+@inline @fastmath function exp5(A::SMatrix{5, 5, Float64, 25}, q::Int=11)
+    # Norm-Berechnung (Frobenius-Norm)
+    s = 0.0
+    @inbounds for i in 1:25; s += A[i]^2; end
+    p = sqrt(s)
+    
+    # Scaling
+    normiter = 2.0; j = 2
+    while p > normiter
+        normiter *= 2.0
+        j += 1
+    end
+
+    C = A / normiter
+    res = one(SMatrix{5,5,Float64,25})
+    res += C
+    
+    # Taylor-Reihe für q Terme
+    D = C
+    for i in 2:(q-1)
+        D = D * C
+        D = D / Float64(i)
+        res += D
+    end
+
+    # Squaring
+    @inbounds for _ in 1:(j-1)
+        res = res * res
+    end
+    
+    return res
 end
 
 @inline @fastmath function get_A(theta::SVector{35, Float64}, avgT::SVector{12, Float64}, sumP::Float64, diam::Float64, leach::Float64)
@@ -72,9 +105,9 @@ end
   SMatrix(A)
 end
 
-@inline @fastmath function get_next_timestep(A::SMatrix{5, 5, Float64}, init::SVector{5, Float64}, infall::SVector{5, Float64}, t::Float64 = 1.)
+@inline @fastmath function get_next_timestep(A::SMatrix{5, 5, Float64}, init::SVector{5, Float64}, infall::SVector{5, Float64}, t::Float64 = 1., q::Int = 11)
   #A \ (exp(A * t) * (A * init + infall) - infall)
-  A \ (exp5(A * t) * (A * init + infall) - infall)
+  A \ (exp5(A * t, q) * (A * init + infall) - infall)
 end
 
 function get_theta(theta = [0.51,5.19,0.13,0.1,0.5,0.,1.,1.,0.99,0.,0.,0.,0.,0.,0.163,0.,-0.,0.,0.,0.,0.,0.158,-0.002,0.17,-0.005,0.067,-0.,-1.44,-2.0,-6.9,0.0042,0.0015,-2.55,1.24,0.25])

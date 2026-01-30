@@ -1,5 +1,5 @@
-#OP = -Ofast -march=native
-OP = -O3 -march=native
+OP = -Ofast -march=native
+#OP = -O3 -march=native
 
 WR = -Wall -Wextra
 

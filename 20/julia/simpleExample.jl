@@ -29,14 +29,14 @@ function tt(n)
         infall2 = infall * i / n
         avgT2 = avgT .+ i / n
         A = yasso20.get_A(theta, avgT2, sumP, diam, leach)
-        result = yasso20.get_next_timestep(A, result, infall, time)
+        result = yasso20.get_next_timestep(A, result, infall, time, 6)
     end
     result
 end
 
 tt(1)
 @time result = tt(1000000)
-# 0.573314 seconds (7.00 M allocations: 350.945 MiB, 4.97% gc time)
+# 0.600205 seconds (7.00 M allocations: 350.945 MiB, 3.32% gc time)
 
 result'
 # 1.40538  0.149233  0.223337  3.02026  6.67175
