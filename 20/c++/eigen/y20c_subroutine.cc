@@ -12,9 +12,11 @@ typedef Matrix<double, 5, 1> Vector5d;
 typedef Matrix<double, 35, 1> Vector35d;
 
 struct yasso20::Impl {
-    Vector35d theta;
-    Matrix5d A;
-    Matrix5d mexpAt;
+  Vector35d theta;
+  Matrix5d th;
+  Matrix5d A;
+  Matrix5d mexpAt;
+  Eigen::PartialPivLU<Eigen::Matrix<double, 5, 5>> lu;
 
     Matrix5d matrixexp(const Matrix5d& At, size_t q) {
         double p = At.norm(); 
@@ -43,7 +45,7 @@ struct yasso20::Impl {
     }
 
     void updateA(double prec, double d, double leac, const std::array<double, 12>& temp) {
-        double tem = 0, temN = 0, temH = 0;
+      double tem = 0, temN = 0, temH = 0, m3 = prec / 1000.;
         
         for (int i = 0; i < 12; ++i) {
             double t = temp[i];
@@ -53,33 +55,31 @@ struct yasso20::Impl {
             temH += std::exp(theta[25] * t + theta[26] * t2);
         }
         
-        tem  = (tem / 12.0)  * (1.0 - std::exp(theta[27] * prec / 1000.0));
-        temN = (temN / 12.0) * (1.0 - std::exp(theta[28] * prec / 1000.0));
-        temH = (temH / 12.0) * (1.0 - std::exp(theta[29] * prec / 1000.0));
+        tem  = (tem / 12.0)  * (1.0 - std::exp(theta[27] * m3));
+        temN = (temN / 12.0) * (1.0 - std::exp(theta[28] * m3));
+        temH = (temH / 12.0) * (1.0 - std::exp(theta[29] * m3));
 
         double size_dep = std::min(1.0, std::pow(1.0 + theta(32)*d + theta(33)*d*d, theta(34)));
 
+        if (tem <= 1e-12) [[unlikely]] {
+	  A.setZero();
+	  return;
+	}
 
-        A.setZero();
-        if (tem <= 1e-12) return;
-
-        // Diagonalelemente
-        for(int i=0; i<3; ++i) A(i,i) = -std::abs(theta[i]) * tem * size_dep;
-        A(3,3) = -std::abs(theta[3]) * temN * size_dep;
-
-        // Massenflüsse
-        A(0,1) = theta[4] * std::abs(A(1,1)); A(0,2) = theta[5] * std::abs(A(2,2)); A(0,3) = theta[6] * std::abs(A(3,3));
-        A(1,0) = theta[7] * std::abs(A(0,0)); A(1,2) = theta[8] * std::abs(A(2,2)); A(1,3) = theta[9] * std::abs(A(3,3));
-        A(2,0) = theta[10]* std::abs(A(0,0)); A(2,1) = theta[11]* std::abs(A(1,1)); A(2,3) = theta[12]* std::abs(A(3,3));
-        A(3,0) = theta[13]* std::abs(A(0,0)); A(3,1) = theta[14]* std::abs(A(1,1)); A(3,2) = theta[15]* std::abs(A(2,2));
-        
-        // Humus
-        A(4,4) = -std::abs(theta[31]) * temH;
-        for(int i=0; i<4; ++i) A(4,i) = theta(30) * std::abs(A(i,i));
-
+	Matrix<double, 5, 1> dA;
+	dA.head<3>() = theta.head<3>() * (tem * size_dep);
+	dA[3] = theta[3] * temN * size_dep;
+	dA[4] = theta[31] * temH;
+	//A = th; 
+	//A.applyOnTheRight(dA.cwiseAbs().asDiagonal());
+	A = th * dA.cwiseAbs().asDiagonal();
+	A.diagonal() = dA;
+ 
         // Leaching
-        for(int i=0; i<4; ++i) A(i,i) += leac * prec / 1000.0;
+	if (leac < 0.) [[unlikely]]
+	  A.diagonal().head<4>().array() += leac * m3;
 
+	lu = A.partialPivLu();
     }
 };
 
@@ -99,6 +99,15 @@ void yasso20::setTheta(const std::array<double, 35> &t_arr) {
     for (int i : alpha_indices) {
         pimpl->theta[i] = -std::abs(pimpl->theta[i]);
     }
+
+    pimpl->th.diagonal().setConstant(-1.0);
+    int i1[] = {1, 2, 3, 5, 7, 8, 10, 11, 13, 15, 16, 17};
+    int i2[] = {7, 10, 13, 4, 11, 14, 5, 8, 15, 6, 9, 12};
+    for (std::size_t i = 0; i < std::size(i1); ++i) {
+      pimpl->th(i1[i]) = t_arr[i2[i]];
+    }
+    pimpl->th.row(4).head<4>().setConstant(t_arr[30]);
+    pimpl->th.col(4).head<4>().setZero();
 }
 
 void yasso20::setClimSizeLeach(const std::array<double, 12>& avgT, double sumP, double diam, double leach) {
@@ -118,7 +127,8 @@ void yasso20::getNextTimestep(const std::array<double, 5>& init, const std::arra
     Vector5d v_b = Vector5d::Map(infall.data());
     Vector5d z1 = pimpl->A * v_init + v_b;
     Vector5d z2 = (pimpl->mexpAt * z1) - v_b;
-    Vector5d xt = pimpl->A.partialPivLu().solve(z2);
+    //Vector5d xt = pimpl->A.partialPivLu().solve(z2);
+    Vector5d xt = pimpl->lu.solve(z2);
     std::copy(xt.data(), xt.data() + 5, result.begin());
 }
 
